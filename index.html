@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>東京旅行 行程表</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      background: #f5f5f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 2rem 1rem 4rem;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    header h1 {
+      font-size: 26px;
+      font-weight: 600;
+      color: #1a1a1a;
+      letter-spacing: -0.3px;
+    }
+    header p {
+      font-size: 14px;
+      color: #888;
+      margin-top: 6px;
+    }
+    .legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    .legend span {
+      font-size: 12px;
+      padding: 2px 10px;
+      border-radius: 10px;
+    }
+    .tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .tab {
+      padding: 7px 16px;
+      border-radius: 20px;
+      border: 1px solid #ddd;
+      font-size: 13px;
+      cursor: pointer;
+      background: #fff;
+      color: #555;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .tab:hover { background: #f0f0ec; border-color: #bbb; }
+    .tab.active {
+      background: #1D9E75;
+      border-color: #1D9E75;
+      color: #fff;
+      font-weight: 500;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .day-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 1.2rem;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e5e5e0;
+    }
+    .day-sub {
+      font-size: 12px;
+      color: #888;
+      font-weight: 400;
+      margin-left: 8px;
+    }
+    .item {
+      display: flex;
+      gap: 12px;
+      position: relative;
+    }
+    /* 時間軸連線 */
+    .item::after {
+      content: '';
+      position: absolute;
+      left: 63px;
+      top: 36px;
+      bottom: -36px;
+      width: 1px;
+      background: #e5e5e0;
+    }
+    /* 最後一個項目不顯示連線 */
+    .item.last-item::after {
+      display: none;
+    }
+    .time-col {
+      width: 52px;
+      min-width: 52px;
+      text-align: right;
+      padding-top: 15px;
+      font-size: 11px;
+      color: #aaa;
+      font-variant-numeric: tabular-nums;
+    }
+    .dot-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 17px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #1D9E75;
+      border: 2px solid #f5f5f0;
+      box-shadow: 0 0 0 1.5px #1D9E75;
+      flex-shrink: 0;
+      z-shrink: 10;
+    }
+    .dot.muted {
+      background: #ccc;
+      box-shadow: 0 0 0 1.5px #ccc;
+    }
+    .content-col {
+      flex: 1;
+      padding: 6px 0 16px;
+    }
+    /* 景點專用框框 */
+    .place-card {
+      background: #ffffff;
+      border: 1px solid #e0e0d5;
+      border-radius: 8px;
+      padding: 12px 14px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .place-name-link {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1a1a1a;
+      line-height: 1.4;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .place-name-link:hover {
+      color: #1D9E75;
+      text-decoration: underline;
+    }
+    .place-note {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+    .badge-food   { background: #FFF3E0; color: #7B4A00; }
+    .badge-spot   { background: #E1F5EE; color: #0A5C40; }
+    .badge-shop   { background: #E3F0FC; color: #0A3F7A; }
+    .badge-travel { background: #F0EFE8; color: #4A4A42; }
+    
+    /* 交通專用樣式（不加框框） */
+    .transit-item {
+      display: flex;
+      gap: 12px;
+      position: relative;
+    }
+    .transit-item::after {
+      content: '';
+      position: absolute;
+      left: 63px;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: #e5e5e0;
+    }
+    .transit-dot-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 10px;
+    }
+    .transit-line-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ddd;
+    }
+    .transit-content {
+      flex: 1;
+      padding: 8px 0;
+      font-size: 12px;
+      color: #666;
+      font-style: italic;
+    }
+    
+    .dimmed { opacity: 0.55; }
+
+    @media (max-width: 480px) {
+      .tabs { gap: 4px; }
+      .tab { padding: 6px 10px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🗼 東京旅行 2025</h1>
+    <p>6/3 – 6/9 ・ 7 天行程</p>
+    <div class="legend">
+      <span class="badge badge-spot">景點</span>
+      <span class="badge badge-food">美食</span>
+      <span class="badge badge-shop">購物</span>
+      <span class="badge badge-travel">交通</span>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="show(0)">6/3 出發</button>
+    <button class="tab" onclick="show(1)">6/4 Day 1</button>
+    <button class="tab" onclick="show(2)">6/5 Day 2</button>
+    <button class="tab" onclick="show(3)">6/6 Day 3</button>
+    <button class="tab" onclick="show(4)">6/7 Day 4</button>
+    <button class="tab" onclick="show(5)">6/8 Day 5</button>
+    <button class="tab" onclick="show(6)">6/9 回家</button>
+  </div>
+
+  <!-- Day 0: 6/3 出發 -->
+  <div class="panel active" id="p0">
+    <p class="day-title">6/3 出發日 <span class="day-sub">台灣 → 東京</span></p>
+    
+    <div class="item">
+      <div class="time-col">18:00</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">桃園機場集合 🔗</a>
+          <div class="place-note">大家準時到！</div>
+          <span class="badge badge-travel">交通</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 交通方式預留 -->
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">✈️ 搭乘飛機前往東京</div>
+    </div>
+
+    <div class="item last-item">
+      <div class="time-col">01:45+</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">包車 or 計程車 → 民宿 🔗</a>
+          <div class="place-note">抵達東京，前往住宿</div>
+          <span class="badge badge-travel">交通</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 1: 6/4 -->
+  <div class="panel" id="p1">
+    <p class="day-title">6/4 Day 1 <span class="day-sub">淺草・上野・秋葉原</span></p>
+    
+    <div class="item">
+      <div class="time-col">10:00</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">起床準備出門 🔗</a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col">10:30</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">今戶神社 🔗</a>
+          <br><span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col">12:00</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">淺草 &amp; 雷門 🔗</a>
+          <br><span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col">14:30</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">恩賜上野公園 🔗</a>
+          <br><span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col">16:00</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">上野阿美橫商店街 🔗</a>
+          <div class="place-note">必吃炸肉餅</div>
+          <span class="badge badge-food">美食</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col">18:00</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">秋葉原 🔗</a>
+          <div class="place-note">動漫、模型和玩具天堂</div>
+          <span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item last-item">
+      <div class="time-col">20:30</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">居酒屋晚餐 🔗</a>
+          <div class="place-note">找民宿附近的</div>
+          <span class="badge badge-food">美食</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 2: 6/5 鎌倉 -->
+  <div class="panel" id="p2">
+    <p class="day-title">6/5 Day 2 <span class="day-sub">鎌倉一日遊</span></p>
+    
+    <div class="item">
+      <div class="time-col">9:00</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">起床出發 🔗</a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🚇 搭車往鎌倉</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col">11:30</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">錢洗弁財天宇賀福神社 🔗</a>
+          <div class="place-note">洗錢求財運</div>
+          <span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col">13:00</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">鎌倉高校 &amp; Shichirigahama Beach 🔗</a>
+          <div class="place-note">灌籃高手取景地！</div>
+          <span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col">15:30</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">鶴岡八幡宮 🔗</a>
+          <br><span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col">17:00</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">小町通商店街 🔗</a>
+          <div class="place-note">散步、吃小食</div>
+          <span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🚇 回民宿</div>
+    </div>
+
+    <div class="item last-item">
+      <div class="time-col">20:00</div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">抵達民宿 🔗</a>
+          <span class="badge badge-travel">交通</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 3: 6/6 川越 -->
+  <div class="panel" id="p3">
+    <p class="day-title">6/6 Day 3 <span class="day-sub">川越小江戶</span></p>
+    
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">熊野神社 🔗</a>
+          <div class="place-note">洗錢 × 買限定御守</div>
+          <span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">川越一番街 🔗</a>
+          <div class="place-note">散步甜點</div>
+          <span class="badge badge-food">美食</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">時之鐘 🔗</a>
+          <div class="place-note">旁邊有星巴克</div>
+          <span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">菓子屋橫丁 × Chiikawa 🔗</a>
+          <br><span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item last-item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">冰川神社 🔗</a>
+          <div class="place-note">玩鯛魚籤</div>
+          <span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 4: 6/7 池袋 -->
+  <div class="panel" id="p4">
+    <p class="day-title">6/7 Day 4 <span class="day-sub">池袋</span></p>
+    
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">東京藝術劇場 🔗</a>
+          <div class="place-note">附近景點的起點</div>
+          <span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">池袋 PARCO 🔗</a>
+          <br><span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">animate 池袋總店 🔗</a>
+          <div class="place-note">動漫聖地</div>
+          <span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">乙女路 🔗</a>
+          <br><span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">池袋太陽城 🔗</a>
+          <div class="place-note">水族館・瞭望台・扭蛋・一番賞</div>
+          <span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">Pokémon Center 🔗</a>
+          <br><span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item last-item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">池袋無敵家拉麵 🔗</a>
+          <br><span class="badge badge-food">美食</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 5: 6/8 澀谷→新宿 -->
+  <div class="panel" id="p5">
+    <p class="day-title">6/8 Day 5 <span class="day-sub">澀谷 → 新宿</span></p>
+    
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">宇宙天文台澀谷 🔗</a>
+          <br><span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">SHIBUYA SKY 🔗</a>
+          <div class="place-note">超美瞭望台</div>
+          <span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">宮下公園 🔗</a>
+          <div class="place-note">拍照打卡</div>
+          <span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">澀谷 PARCO 🔗</a>
+          <div class="place-note">玩具天堂</div>
+          <span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">澀谷中心街 🔗</a>
+          <br><span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">新宿高島屋 TIMES SQUARE 🔗</a>
+          <br><span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">LUMINE EST / NEWoMan SHINJUKU 🔗</a>
+          <br><span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">唐吉訶德新宿歌舞伎町店 🔗</a>
+          <br><span class="badge badge-shop">購物</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">歌舞伎町 🔗</a>
+          <br><span class="badge badge-spot">景點</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：尚未填寫交通方式</div>
+    </div>
+
+    <div class="item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">新大久保韓國城 🔗</a>
+          <div class="place-note">吃好料</div>
+          <span class="badge badge-food">美食</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="transit-item">
+      <div class="time-col"></div>
+      <div class="transit-dot-col"><div class="transit-line-dot"></div></div>
+      <div class="transit-content">🐾 步行 or 🚇 搭乘：考慮是否前往</div>
+    </div>
+
+    <div class="item last-item dimmed">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot muted"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">BIG BOX高田馬場 / 花園神社 / 赤城神社 🔗</a>
+          <div class="place-note">較不順路，視情況安排</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 7: 6/9 回家 -->
+  <div class="panel" id="p6">
+    <p class="day-title">6/9 <span class="day-sub">回台灣</span></p>
+    
+    <div class="item last-item">
+      <div class="time-col"></div>
+      <div class="dot-col"><div class="dot"></div></div>
+      <div class="content-col">
+        <div class="place-card">
+          <a href="#" target="_blank" class="place-name-link">整理行李，準備回家 🔗</a>
+          <div class="place-note">帶著滿滿回憶 🎒</div>
+          <span class="badge badge-travel">交通</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function show(i) {
+    document.querySelectorAll('.panel').forEach((p, idx) => p.classList.toggle('active', idx === i));
+    document.querySelectorAll('.tab').forEach((t, idx) => t.classList.toggle('active', idx === i));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
